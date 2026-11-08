@@ -11,20 +11,22 @@
 //! ## Run
 //!
 //! ```text
-//! RPC_URL      default https://api.devnet.solana.com
 //! KEYPAIR      default ~/.config/solana/id.json (fee payer + counter authority)
 //! PROGRAM_ID   default: LmGSyCLnSD14kNmpgvsHzM2fN6dxQ8eUyoVhPtw4Ff2 (deployed on devnet)
 //! ```
 //!
-//! `RPC_URL=http://127.0.0.1:8899 cargo run` points the same client at a local surfpool.
+//! On start the client asks for the cluster (`cluster.rs`): localnet (surfpool at
+//! 127.0.0.1:8899, must be running with the program deployed) or devnet (`DEVNET_RPC_URL` from
+//! `../.env`).
 //!
 //! ## What happens, step by step
 //!
 //! ### 0. Configuration (`main`)
 //!
-//! Read `RPC_URL`, `KEYPAIR`, and `PROGRAM_ID` (all optional; the devnet constants are the
-//! defaults), open a `confirmed` RPC client, and load the payer keypair. The payer is both the
-//! fee payer and the counter authority, so its keypair signs deposit and withdraw.
+//! Ask for the cluster, read `KEYPAIR` and `PROGRAM_ID` (both optional; the devnet program ID is
+//! the default), open a `confirmed` RPC client, check the endpoint answers, and load the payer
+//! keypair. The payer is both the fee payer and the counter authority, so its keypair signs
+//! deposit and withdraw.
 //!
 //! ### 1. Derive and check the counter PDA (`main` + `fetch_count`)
 //!
@@ -91,6 +93,8 @@
 //! Note: each run pays rent for a new mint and source account (~0.004 SOL on devnet). The vault's
 //! rent is recovered by `Withdraw`; the source account is left open.
 
+mod cluster;
+
 use anyhow::{Context, Result, bail, ensure};
 use solana_commitment_config::CommitmentConfig;
 use solana_instruction::{AccountMeta, Instruction};
@@ -107,7 +111,6 @@ const TOKEN_PROGRAM: Pubkey = Pubkey::new_from_array([
     6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206, 235, 121, 172, 28, 180, 133, 237,
     95, 91, 55, 145, 58, 140, 245, 133, 126, 255, 0, 169,
 ]); // TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
-const DEVNET_RPC_URL: &str = "https://api.devnet.solana.com";
 /// Program ID deployed on devnet (also the pubkey in ../target/deploy/auction-keypair.json).
 const DEVNET_PROGRAM_ID: &str = "LmGSyCLnSD14kNmpgvsHzM2fN6dxQ8eUyoVhPtw4Ff2";
 
@@ -131,7 +134,7 @@ const CONFIG: v1::TransactionConfig = v1::TransactionConfig::empty()
     .with_priority_fee(1_000);
 
 fn main() -> Result<()> {
-    let rpc_url = std::env::var("RPC_URL").unwrap_or_else(|_| DEVNET_RPC_URL.into());
+    let cluster = cluster::select()?;
     let keypair_path = std::env::var("KEYPAIR").unwrap_or_else(|_| {
         format!(
             "{}/.config/solana/id.json",
@@ -146,11 +149,12 @@ fn main() -> Result<()> {
             .parse()
             .context("DEVNET_PROGRAM_ID is not a valid pubkey")?,
     };
-    let rpc = RpcClient::new_with_commitment(rpc_url.clone(), CommitmentConfig::confirmed());
+    let rpc = RpcClient::new_with_commitment(cluster.rpc_url.clone(), CommitmentConfig::confirmed());
+    cluster.check_reachable(&rpc)?;
     let (counter, _) =
         Pubkey::find_program_address(&[b"counter", payer.pubkey().as_ref()], &program_id);
 
-    println!("cluster: {}", rpc_url.split('?').next().unwrap_or_default());
+    println!("cluster: {}", cluster.label());
     println!("program: {program_id}");
     println!("payer:   {}", payer.pubkey());
     println!("counter: {counter}\n");

@@ -1,2 +1,4 @@
 target
 .surfpool/
+# RPC URLs with API keys
+.env

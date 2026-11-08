@@ -1,7 +1,7 @@
 [workspace]
 members = ["program"]
 # tests/ and the clients are separate workspaces with their own Cargo.lock.
-exclude = ["tests", "client", "counter-client", "vault-client"]
+exclude = ["tests", "counter-client", "vault-client"]
 resolver = "3"
 
 [workspace.package]

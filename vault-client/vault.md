@@ -23,9 +23,15 @@ cd vault-client
 cargo run -q
 ```
 
+On start the client asks for the cluster:
+
+| Choice | RPC endpoint | Notes |
+|---|---|---|
+| `1` localnet | `http://127.0.0.1:8899` | Prints a warning; surfpool must be running with the program deployed, otherwise the client stops with the command to start it |
+| `2` devnet | `DEVNET_RPC_URL` | Loaded from `../.env` (copy `../.env.example`); a shell variable wins. Only the host is printed |
+
 | Variable | Default | Meaning |
 |---|---|---|
-| `RPC_URL` | `https://api.devnet.solana.com` | RPC endpoint |
 | `KEYPAIR` | `~/.config/solana/id.json` | Fee payer **and** counter authority |
 | `PROGRAM_ID` | `LmGSyCLnSD14kNmpgvsHzM2fN6dxQ8eUyoVhPtw4Ff2` | Deployed program |
 
@@ -34,12 +40,6 @@ the same keypair. If it has not, the client stops with:
 
 ```text
 counter <PDA> is not initialized; run counter-client first
-```
-
-For a local surfpool:
-
-```sh
-RPC_URL=http://127.0.0.1:8899 cargo run -q
 ```
 
 ---
@@ -96,10 +96,12 @@ any mismatch returns a non-zero exit code.
 
 ### Step 0 — Configuration
 
-- `RPC_URL`, `KEYPAIR`, `PROGRAM_ID` are read with the defaults above.
+- The cluster prompt picks the RPC endpoint (`src/cluster.rs`); `KEYPAIR` and `PROGRAM_ID` are
+  read with the defaults above.
 - The payer keypair is the fee payer and the counter authority. It is the only required signer
   for deposit and withdraw.
-- The RPC client uses `CommitmentConfig::confirmed()`.
+- The RPC client uses `CommitmentConfig::confirmed()`, and `getVersion` checks the endpoint
+  answers before anything else is sent.
 
 ### Step 1 — Derive and validate the counter
 

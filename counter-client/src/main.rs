@@ -1,8 +1,12 @@
 //! Calls the deployed counter with v1 transactions (SIMD-0385) and checks the result.
 //!
-//! RPC_URL      default http://127.0.0.1:8899 (local surfpool)
+//! On start it asks for the cluster (`cluster.rs`): localnet (surfpool at 127.0.0.1:8899, must
+//! be running) or devnet (`DEVNET_RPC_URL` from `../.env`).
+//!
 //! KEYPAIR      default ~/.config/solana/id.json (fee payer + counter authority)
 //! PROGRAM_ID   default: pubkey of ../target/deploy/auction-keypair.json
+
+mod cluster;
 
 use anyhow::{bail, ensure, Context, Result};
 use solana_commitment_config::CommitmentConfig;
@@ -32,7 +36,7 @@ const CONFIG: v1::TransactionConfig = v1::TransactionConfig::empty()
     .with_priority_fee(1_000);
 
 fn main() -> Result<()> {
-    let rpc_url = std::env::var("RPC_URL").unwrap_or_else(|_| "http://127.0.0.1:8899".into());
+    let cluster = cluster::select()?;
     let keypair_path = std::env::var("KEYPAIR").unwrap_or_else(|_| {
         format!(
             "{}/.config/solana/id.json",
@@ -47,11 +51,12 @@ fn main() -> Result<()> {
             .map_err(|e| anyhow::anyhow!("failed to read {PROGRAM_KEYPAIR}: {e}"))?
             .pubkey(),
     };
-    let rpc = RpcClient::new_with_commitment(rpc_url.clone(), CommitmentConfig::confirmed());
+    let rpc = RpcClient::new_with_commitment(cluster.rpc_url.clone(), CommitmentConfig::confirmed());
+    cluster.check_reachable(&rpc)?;
     let (counter, _) =
         Pubkey::find_program_address(&[b"counter", payer.pubkey().as_ref()], &program_id);
 
-    println!("cluster: {}", rpc_url.split('?').next().unwrap_or_default());
+    println!("cluster: {}", cluster.label());
     println!("program: {program_id}");
     println!("payer:   {}", payer.pubkey());
     println!("counter: {counter}\n");

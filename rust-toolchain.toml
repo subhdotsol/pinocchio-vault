@@ -2,5 +2,5 @@
 # Host rustc: builds tests/ and client/ (Agave 4.x crates need >= 1.98).
 # The program itself is compiled by the platform-tools rustc, not this one.
 channel = "1.99.1"
-components = ["rustfmt", "clippy"]
+components = ["rustfmt", "clippy", "rust-analyzer"]
 profile = "minimal"

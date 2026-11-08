@@ -22,20 +22,20 @@ cd counter-client
 cargo run -q
 ```
 
+On start the client asks for the cluster:
+
+| Choice | RPC endpoint | Notes |
+|---|---|---|
+| `1` localnet | `http://127.0.0.1:8899` | Prints a warning; surfpool must be running with the program deployed, otherwise the client stops with the command to start it |
+| `2` devnet | `DEVNET_RPC_URL` | Loaded from `../.env` (copy `../.env.example`); a shell variable wins. Only the host is printed |
+
 | Variable | Default | Meaning |
 |---|---|---|
-| `RPC_URL` | `http://127.0.0.1:8899` | RPC endpoint (local surfpool) |
 | `KEYPAIR` | `~/.config/solana/id.json` | Fee payer **and** counter authority |
 | `PROGRAM_ID` | pubkey in `../target/deploy/auction-keypair.json` | Program to call |
 
 The program is deployed on devnet at `LmGSyCLnSD14kNmpgvsHzM2fN6dxQ8eUyoVhPtw4Ff2`, which is also
-the pubkey in the local keypair file, so against devnet use:
-
-```sh
-RPC_URL=https://api.devnet.solana.com cargo run -q
-```
-
-For the local surfpool where the program was deployed with that keypair, the defaults work.
+the pubkey in the local keypair file, so the default `PROGRAM_ID` works on both clusters.
 
 ---
 
@@ -82,9 +82,11 @@ reading `count` from bytes `40..48`.
 
 ### Step 0 — Configuration
 
-- `RPC_URL`, `KEYPAIR`, `PROGRAM_ID` are read with the defaults above.
+- The cluster prompt picks the RPC endpoint (`src/cluster.rs`); `KEYPAIR` and `PROGRAM_ID` are
+  read with the defaults above.
 - The payer keypair is the fee payer and the counter authority.
-- The RPC client uses `CommitmentConfig::confirmed()`.
+- The RPC client uses `CommitmentConfig::confirmed()`, and `getVersion` checks the endpoint
+  answers before anything else is sent.
 
 ### Step 1 — Derive the counter
 
